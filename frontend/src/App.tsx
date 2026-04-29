@@ -101,11 +101,11 @@ function App() {
         </label>
 
         <label>
-          API Key
+          API Key Override
           <input
             value={apiKey}
             onChange={(event) => setApiKey(event.target.value)}
-            placeholder="sk-..."
+            placeholder="Optional when backend/.env is set"
             type="password"
           />
         </label>
@@ -140,7 +140,7 @@ function App() {
           {messages.length === 0 ? (
             <div className="empty-state">
               <h2>开始你的第一轮对话</h2>
-              <p>填入 API Key，选择模型，然后发送一条消息。</p>
+              <p>选择模型，然后发送一条消息。</p>
             </div>
           ) : (
             messages.map((message, index) => (
@@ -161,7 +161,7 @@ function App() {
             placeholder="输入消息..."
             rows={3}
           />
-          <button disabled={!input.trim() || !apiKey.trim() || isLoading} type="submit">
+          <button disabled={!input.trim() || isLoading} type="submit">
             Send
           </button>
         </form>

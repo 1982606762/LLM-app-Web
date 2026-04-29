@@ -10,7 +10,7 @@ export type ChatMessage = {
 export type ChatRequest = {
   provider: Provider;
   model: string;
-  apiKey: string;
+  apiKey?: string;
   messages: ChatMessage[];
 };
 
