@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { sendChatMessage } from "./api/chat";
 import type { ChatMessage, Provider } from "./types/chat";
 
@@ -23,13 +23,6 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const conversation = useMemo<ChatMessage[]>(() => {
-    const systemMessage = systemPrompt.trim()
-      ? [{ role: "system" as const, content: systemPrompt.trim() }]
-      : [];
-    return [...systemMessage, ...messages];
-  }, [messages, systemPrompt]);
 
   function handleProviderChange(nextProvider: Provider) {
     setProvider(nextProvider);
@@ -76,48 +69,55 @@ function App() {
   return (
     <main className="app-shell">
       <aside className="settings-panel">
-        <div>
-          <p className="eyebrow">Personal LLM Client</p>
-          <h1>多模型聊天</h1>
+        <div className="brand-block">
+          <span className="brand-mark">LLM</span>
+          <div>
+            <p className="eyebrow">Personal Client</p>
+            <h1>多模型聊天</h1>
+          </div>
         </div>
 
-        <label>
-          Provider
-          <select
-            value={provider}
-            onChange={(event) => handleProviderChange(event.target.value as Provider)}
-          >
-            {Object.entries(PROVIDER_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="settings-section">
+          <label>
+            Provider
+            <select
+              value={provider}
+              onChange={(event) => handleProviderChange(event.target.value as Provider)}
+            >
+              {Object.entries(PROVIDER_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label>
-          Model
-          <input value={model} onChange={(event) => setModel(event.target.value)} />
-        </label>
+          <label>
+            Model
+            <input value={model} onChange={(event) => setModel(event.target.value)} />
+          </label>
 
-        <label>
-          API Key Override
-          <input
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-            placeholder="Optional when backend/.env is set"
-            type="password"
-          />
-        </label>
+          <label>
+            API Key Override
+            <input
+              value={apiKey}
+              onChange={(event) => setApiKey(event.target.value)}
+              placeholder="Optional when backend/.env is set"
+              type="password"
+            />
+          </label>
+        </div>
 
-        <label>
-          System Prompt
-          <textarea
-            value={systemPrompt}
-            onChange={(event) => setSystemPrompt(event.target.value)}
-            rows={5}
-          />
-        </label>
+        <div className="settings-section prompt-section">
+          <label>
+            System Prompt
+            <textarea
+              value={systemPrompt}
+              onChange={(event) => setSystemPrompt(event.target.value)}
+              rows={6}
+            />
+          </label>
+        </div>
 
         <div className="lesson-box">
           <strong>这一步你在学什么</strong>
@@ -133,7 +133,12 @@ function App() {
             <p className="eyebrow">{PROVIDER_LABELS[provider]}</p>
             <h2>{model}</h2>
           </div>
-          <span className="status">{isLoading ? "Thinking" : "Ready"}</span>
+          <div className="header-actions">
+            <span className="message-count">{messages.length} messages</span>
+            <span className={`status ${isLoading ? "loading" : ""}`}>
+              {isLoading ? "Thinking" : "Ready"}
+            </span>
+          </div>
         </div>
 
         <div className="messages" aria-live="polite">
@@ -155,15 +160,17 @@ function App() {
         {error ? <div className="error-banner">{error}</div> : null}
 
         <form className="composer" onSubmit={handleSubmit}>
-          <textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="输入消息..."
-            rows={3}
-          />
-          <button disabled={!input.trim() || isLoading} type="submit">
-            Send
-          </button>
+          <div className="composer-box">
+            <textarea
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="输入消息..."
+              rows={3}
+            />
+            <button disabled={!input.trim() || isLoading} type="submit">
+              Send
+            </button>
+          </div>
         </form>
       </section>
     </main>
