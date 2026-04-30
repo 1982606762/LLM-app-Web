@@ -1,9 +1,9 @@
 import { FormEvent, useState } from "react";
-import { sendChatMessage } from "./api/chat";
+import { sendChatMessage, streamChatMessage } from "./api/chat";
 import type { ChatMessage, Provider } from "./types/chat";
 
 const DEFAULT_MODELS: Record<Provider, string> = {
-  openai: "gpt-5.4-mini",
+  openai: "gpt-5.4",
   gemini: "gemini-2.5-flash",
   anthropic: "claude-sonnet-4-5",
 };
@@ -39,23 +39,55 @@ function App() {
 
     const userMessage: ChatMessage = { role: "user", content: trimmedInput };
     const nextMessages = [...messages, userMessage];
+    const assistantMessage: ChatMessage = { role: "assistant", content: "" };
 
-    setMessages(nextMessages);
+    setMessages([...nextMessages, assistantMessage]);
     setInput("");
     setError(null);
     setIsLoading(true);
 
     try {
+      const requestMessages = [
+        ...(systemPrompt.trim()
+          ? [{ role: "system" as const, content: systemPrompt.trim() }]
+          : []),
+        ...nextMessages,
+      ];
+
+      if (provider === "openai") {
+        await streamChatMessage(
+          {
+            provider,
+            model,
+            apiKey,
+            messages: requestMessages,
+          },
+          (chunk) => {
+            setMessages((currentMessages) => {
+              const updatedMessages = [...currentMessages];
+              const lastMessage = updatedMessages[updatedMessages.length - 1];
+
+              if (!lastMessage || lastMessage.role !== "assistant") {
+                return updatedMessages;
+              }
+
+              updatedMessages[updatedMessages.length - 1] = {
+                ...lastMessage,
+                content: lastMessage.content + chunk,
+              };
+
+              return updatedMessages;
+            });
+          },
+        );
+        return;
+      }
+
       const response = await sendChatMessage({
         provider,
         model,
         apiKey,
-        messages: [
-          ...(systemPrompt.trim()
-            ? [{ role: "system" as const, content: systemPrompt.trim() }]
-            : []),
-          ...nextMessages,
-        ],
+        messages: requestMessages,
       });
       setMessages([...nextMessages, response.message]);
     } catch (caughtError) {

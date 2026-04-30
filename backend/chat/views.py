@@ -3,12 +3,13 @@ import os
 from pathlib import Path
 from typing import Any
 
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, JsonResponse, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from .providers.anthropic import call_anthropic
 from .providers.gemini import call_gemini
 from .providers.openai import call_openai
+from .providers.openai import stream_openai
 
 
 PROVIDERS = {
@@ -109,3 +110,44 @@ def chat_view(request: HttpRequest) -> JsonResponse:
         return error_response(str(exc), status=502, request=request)
 
     return with_cors(JsonResponse({"message": {"role": "assistant", "content": content}}), request)
+
+
+@csrf_exempt
+def chat_stream_view(request: HttpRequest) -> JsonResponse | StreamingHttpResponse:
+    if request.method == "OPTIONS":
+        return with_cors(JsonResponse({}), request)
+
+    if request.method != "POST":
+        return error_response("Only POST is supported.", status=405, request=request)
+
+    try:
+        payload: dict[str, Any] = json.loads(request.body)
+    except json.JSONDecodeError:
+        return error_response("Request body must be valid JSON.", request=request)
+
+    provider = payload.get("provider")
+    model = payload.get("model")
+    api_key = get_provider_api_key(provider, payload.get("apiKey"))
+    messages = payload.get("messages")
+
+    if provider != "openai":
+        return error_response("Streaming is currently only implemented for OpenAI.", request=request)
+    if not model:
+        return error_response("Model is required.", request=request)
+    if not api_key:
+        return error_response(
+            "API key is required. Enter it in the UI or set OPENAI_API_KEY/OPENAI_KEY in backend/.env.",
+            request=request,
+        )
+    if not isinstance(messages, list) or not messages:
+        return error_response("Messages must be a non-empty list.", request=request)
+
+    try:
+        stream = stream_openai(api_key=api_key, model=model, messages=messages)
+    except Exception as exc:
+        return error_response(str(exc), status=502, request=request)
+
+    response = StreamingHttpResponse(stream, content_type="text/plain; charset=utf-8")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return with_cors(response, request)
